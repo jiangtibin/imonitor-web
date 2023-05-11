@@ -1,0 +1,48 @@
+server:
+  port: 9090
+  servlet:
+    session:
+      tracking-modes: cookie
+      timeout: 15M
+      cookie:
+        http-only: true
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/imonitor_web
+    username: im_user
+    password: im_user
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+app:
+ security:
+   jwt:
+     enabled: true
+     secretKey: 792F423F4528482B4D6251655468576D5A7133743677397A24432646294A404E
+     accessTokenExpiration: 60*60*1000 # a hour
+     refreshTokenExpiration: 24*60*60*1000 # a day
+   cas:
+     enabled: true
+     server-url-prefix: https://cas3.hengtiansoft.com/cas
+     server-login-url: https://cas3.hengtiansoft.com/cas/login
+     client-host-url: http://localhost:9090
+     validation-type: cas3
+     key: 6D5970337336763979244226452948404D635166546A576E5A7234743777217A
+
+logging:
+  level:
+    org:
+      springframework:
+        security:
+          web:
+            FilterChainProxy: trace
