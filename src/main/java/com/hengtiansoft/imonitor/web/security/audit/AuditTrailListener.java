@@ -1,5 +1,6 @@
 package com.hengtiansoft.imonitor.web.security.audit;
 
+import com.hengtiansoft.imonitor.web.security.jwt.JwtTokenAuthenticationToken;
 import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,7 +19,8 @@ public class AuditTrailListener {
     private void logAfterAnyUpdate(Object obj) {
         log.info(String.format("[Audit] entity %s was updated by user %s",
                 obj.getClass().getSimpleName(),
-                SecurityContextHolder.getContext().getAuthentication().getName()));
+                Objects.requireNonNullElseGet(SecurityContextHolder.getContext().getAuthentication(),
+                        () -> JwtTokenAuthenticationToken.accessToken("Unknown", "")).getName()));
     }
 
     @PrePersist
@@ -45,7 +47,8 @@ public class AuditTrailListener {
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method setCreateUser = clazz.getDeclaredMethod("setCreateUser", String.class);
         Method setCreateAt = clazz.getDeclaredMethod("setCreateAt", LocalDateTime.class);
-        setCreateUser.invoke(obj, SecurityContextHolder.getContext().getAuthentication().getName());
+        setCreateUser.invoke(obj, Objects.requireNonNullElseGet(SecurityContextHolder.getContext().getAuthentication(),
+                () -> JwtTokenAuthenticationToken.accessToken("Unknown", "")).getName());
         setCreateAt.invoke(obj, LocalDateTime.now());
     }
 
@@ -53,7 +56,8 @@ public class AuditTrailListener {
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method setCreateUser = clazz.getDeclaredMethod("setUpdateUser", String.class);
         Method setCreateAt = clazz.getDeclaredMethod("setUpdateAt", LocalDateTime.class);
-        setCreateUser.invoke(obj, SecurityContextHolder.getContext().getAuthentication().getName());
+        setCreateUser.invoke(obj, Objects.requireNonNullElseGet(SecurityContextHolder.getContext().getAuthentication(),
+                () -> JwtTokenAuthenticationToken.accessToken("Unknown", "")).getName());
         setCreateAt.invoke(obj, LocalDateTime.now());
     }
 }

@@ -1,21 +1,40 @@
 package com.hengtiansoft.imonitor.web.security.entity.permission;
 
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.hengtiansoft.imonitor.web.security.entity.permission.PermissionType.API;
+import static com.hengtiansoft.imonitor.web.security.entity.permission.PermissionType.MENU;
+
 public enum Permissions {
-    DINGDING_CHAT_LIST("DINGDING::CHAT::LIST"),
-    DINGDING_FILE_LIST("DINGDING::FILE::LIST"),
-    WECHAT_CHAT_LIST("WECHAT::CHAT::LIST"),
-    WECHAT_FILE_LIST("WECHAT::FILE::LIST"),
-    USER_READ("USER::READ"),
-    USER_ADD("USER::ADD"),
-    USER_UPDATE("USER::UPDATE"),
-    USER_DELETE("USER::DELETE");
+    ALL_PERMISSIONS {
+        @Override
+        public Set<Permission> getPermissions() {
+            return new HashSet<>(EnumSet.allOf(Permission.class));
+        }
+    },
+    MENU_PERMISSIONS {
+        @Override
+        public Set<Permission> getPermissions() {
+            return EnumSet.allOf(Permission.class)
+                    .stream()
+                    .filter(permissions -> permissions.getPermissionType() == MENU)
+                    .collect(Collectors.toSet());
+        }
+    },
+    API_PERMISSIONS {
+        @Override
+        public Set<Permission> getPermissions() {
+            return EnumSet.allOf(Permission.class)
+                    .stream()
+                    .filter(permissions -> permissions.getPermissionType() == API)
+                    .collect(Collectors.toSet());
+        }
+    };
 
-    private final String permission;
-    Permissions(String permission) {
-        this.permission = permission;
-    }
-
-    public String getPermission() {
-        return permission;
+    public Set<Permission> getPermissions() {
+        return new HashSet<>();
     }
 }

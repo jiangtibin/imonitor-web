@@ -1,5 +1,6 @@
 package com.hengtiansoft.imonitor.web.security.auth;
 
+import com.hengtiansoft.imonitor.web.security.entity.permission.Permission;
 import com.hengtiansoft.imonitor.web.security.entity.role.Role;
 import com.hengtiansoft.imonitor.web.security.entity.token.Token;
 import com.hengtiansoft.imonitor.web.security.entity.token.TokenRepository;
@@ -16,10 +17,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
+
+import java.util.stream.Collectors;
 
 @Service
 @Validated
@@ -33,14 +37,20 @@ public class AuthenticationService{
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthenticationResponse registry(@Valid RegistrationRequest request) {
+    public AuthenticationResponse register(@Valid RegistrationRequest request) {
+        var permissions = request
+                .permissions()
+                .stream()
+                .map(Permission::valueOf)
+                .collect(Collectors.toSet());
+
         var user = User
                 .builder()
                 .username(request.username())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.valueOf(request.role()))
-                .permissions(request.permissions())
+                .permissions(permissions)
                 .locked(false)
                 .enabled(true)
                 .credentialStrategy(CredentialStrategy.NEVER)
@@ -56,18 +66,14 @@ public class AuthenticationService{
     }
 
     public AuthenticationResponse authenticate(@Valid AuthenticationRequest request) {
-        authenticationManager.authenticate(
+        Authentication authenticate = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.username(),
                         request.password()
                 )
         );
 
-        var authUser = userRepository
-                .findByEmail(request.username())
-                .map(AuthUser::new)
-                .orElseThrow(() -> new UsernameNotFoundException("用户名或密码错误"));
-
+        AuthUser authUser = (AuthUser) authenticate.getPrincipal();
         var accessToken = jwtProvider.generateAccessToken(authUser);
         revokeAllTokens(authUser.user(), TokenType.ACCESS_TOKEN);
         saveUserToken(authUser.user(), accessToken, TokenType.ACCESS_TOKEN);
@@ -93,7 +99,7 @@ public class AuthenticationService{
             throw new UnsupportedJwtException("Unsupported token provided, refresh token expected.");
         }
 
-        var userEmail = jwtProvider.extractUsername(token.getToken());
+        var userEmail = jwtProvider.extractSubject(token.getToken());
         if (userEmail == null) {
             throw new JwtException("Invalid Token");
         }

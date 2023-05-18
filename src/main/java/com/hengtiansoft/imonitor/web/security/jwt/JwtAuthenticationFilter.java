@@ -1,5 +1,7 @@
 package com.hengtiansoft.imonitor.web.security.jwt;
 
+import com.hengtiansoft.imonitor.web.security.entity.token.TokenType;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.lang.Assert;
 import jakarta.servlet.FilterChain;
@@ -12,6 +14,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 
 import java.io.IOException;
 
@@ -21,10 +24,12 @@ public class JwtAuthenticationFilter extends AbstractAuthenticationProcessingFil
 
     public JwtAuthenticationFilter() {
         super("/**");
+        setAuthenticationFailureHandler(new SimpleUrlAuthenticationFailureHandler());
     }
 
     public JwtAuthenticationFilter(String filterProcessUrl) {
         super(filterProcessUrl);
+        setAuthenticationFailureHandler(new SimpleUrlAuthenticationFailureHandler());
     }
 
     public void afterPropertiesSet() {
@@ -47,15 +52,22 @@ public class JwtAuthenticationFilter extends AbstractAuthenticationProcessingFil
     public Authentication attemptAuthentication(
             HttpServletRequest request,
             HttpServletResponse response)
-            throws AuthenticationException, IOException, ServletException {
+            throws AuthenticationException {
         try {
-            String token = obtainToken(request);
-            String username = jwtProvider.extractUsername(token);
-            JwtTokenAuthenticationToken jwtTokenAuthenticationToken = new JwtTokenAuthenticationToken(username, token);
+            final String token = obtainToken(request);
+            final TokenType tokenType = jwtProvider.extractTokenType(token);
+            final String subject = jwtProvider.extractSubject(token);
+            JwtTokenAuthenticationToken jwtTokenAuthenticationToken = switch (tokenType) {
+                case ACCESS_TOKEN -> JwtTokenAuthenticationToken.accessToken(subject, token);
+                case API_TOKEN -> JwtTokenAuthenticationToken.apiToken(subject, token);
+                case REFRESH_TOKEN -> throw new BadCredentialsException("Invalid Token: unSupport token type");
+            };
             jwtTokenAuthenticationToken.setDetails(this.authenticationDetailsSource.buildDetails(request));
             return this.getAuthenticationManager().authenticate(jwtTokenAuthenticationToken);
+        } catch (ExpiredJwtException ex) {
+            throw new BadCredentialsException("Invalid token: token expired", ex);
         } catch (JwtException ex) {
-            throw new BadCredentialsException(ex.getMessage(), ex);
+            throw new BadCredentialsException("Invalid token: " + ex.getMessage(), ex);
         }
     }
 

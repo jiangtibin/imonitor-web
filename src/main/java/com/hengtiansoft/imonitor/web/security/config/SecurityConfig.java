@@ -3,9 +3,10 @@ package com.hengtiansoft.imonitor.web.security.config;
 import com.hengtiansoft.imonitor.web.security.CasAndJwtAuthEntryPoint;
 import com.hengtiansoft.imonitor.web.security.cas.CasAuthenticationRedirectStrategy;
 import com.hengtiansoft.imonitor.web.security.cas.CasProperties;
+import com.hengtiansoft.imonitor.web.security.entity.client.AuthClient;
+import com.hengtiansoft.imonitor.web.security.entity.client.ClientRepository;
 import com.hengtiansoft.imonitor.web.security.entity.role.Role;
 import com.hengtiansoft.imonitor.web.security.entity.token.TokenRepository;
-import com.hengtiansoft.imonitor.web.security.entity.token.TokenService;
 import com.hengtiansoft.imonitor.web.security.entity.user.AuthUser;
 import com.hengtiansoft.imonitor.web.security.entity.user.UserRepository;
 import com.hengtiansoft.imonitor.web.security.jwt.*;
@@ -18,12 +19,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.cas.ServiceProperties;
 import org.springframework.security.cas.authentication.CasAssertionAuthenticationToken;
 import org.springframework.security.cas.authentication.CasAuthenticationProvider;
 import org.springframework.security.cas.web.CasAuthenticationFilter;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.AuthenticationUserDetailsService;
@@ -41,10 +44,15 @@ import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
+@EnableMethodSecurity(securedEnabled = true)
 public class SecurityConfig {
 
     private final UserRepository userRepository;
+
+    private final ClientRepository clientRepository;
+
     private final TokenRepository tokenRepository;
+
     private final JwtLogoutHandler jwtLogoutHandler;
 
     @Bean
@@ -156,7 +164,7 @@ public class SecurityConfig {
 
     @Bean
     @ConditionalOnProperty(name = "app.security.jwt.enabled", havingValue = "true", matchIfMissing = true)
-    JwtTokenService jwtTokenService() {return new TokenService(tokenRepository);}
+    JwtTokenService jwtTokenService() {return new JwtTokenServiceImpl(tokenRepository);}
 
     @Bean
     @ConditionalOnProperty(name = "app.security.jwt.enabled", havingValue = "true", matchIfMissing = true)
@@ -183,10 +191,17 @@ public class SecurityConfig {
     @Bean
     @ConditionalOnProperty(name = "app.security.jwt.enabled", havingValue = "true", matchIfMissing = true)
     public AuthenticationUserDetailsService<JwtTokenAuthenticationToken> jwtAuthUserDetailsService() {
-        return token -> userRepository
-                .findByEmail(token.getPrincipal().toString())
-                .map(AuthUser::new)
-                .orElseThrow(() -> new UsernameNotFoundException("用户名或密码错误"));
+        return token -> switch (token.getTokenType()) {
+            case ACCESS_TOKEN -> this.userRepository
+                    .findByEmail(token.getPrincipal().toString())
+                    .map(AuthUser::new)
+                    .orElseThrow(() -> new UsernameNotFoundException("用户名或密码错误"));
+            case API_TOKEN -> this.clientRepository
+                    .findByClientId(token.getPrincipal().toString())
+                    .map(AuthClient::new)
+                    .orElseThrow(() -> new BadCredentialsException("Invalid token: client not exist"));
+            case REFRESH_TOKEN -> throw new BadCredentialsException("Invalid token: unSupport token type");
+        };
     }
 
     @Bean

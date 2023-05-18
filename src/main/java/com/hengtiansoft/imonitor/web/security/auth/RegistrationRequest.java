@@ -1,15 +1,20 @@
 package com.hengtiansoft.imonitor.web.security.auth;
 
-import com.hengtiansoft.imonitor.web.security.entity.permission.Permission;
+import com.hengtiansoft.imonitor.web.security.entity.permission.Permissions;
 import com.hengtiansoft.imonitor.web.security.entity.role.Role;
-import com.hengtiansoft.imonitor.web.security.validator.RolePattern;
+import com.hengtiansoft.imonitor.web.security.validator.PermissionSubset;
+import com.hengtiansoft.imonitor.web.security.validator.RoleAny;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 
-import java.util.List;
+import java.util.Set;
 
+@Builder
 public record RegistrationRequest(
+
         @NotBlank(message = "用户名不能为空")
         String username,
 
@@ -22,9 +27,11 @@ public record RegistrationRequest(
         @Size(min = 8, message = "密码长度必须大于8位")
         String password,
 
-        @RolePattern(anyOf = {Role.WEB_USER, Role.API_USER})
+        @RoleAny(anyOf = {Role.ADMIN, Role.WEB_USER})
         String role,
 
-        List<Permission> permissions
+        @NotNull
+        @PermissionSubset(subset = Permissions.ALL_PERMISSIONS)
+        Set<String> permissions
 ) {
 }

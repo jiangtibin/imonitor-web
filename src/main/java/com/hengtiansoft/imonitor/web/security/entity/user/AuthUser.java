@@ -15,8 +15,7 @@ public record AuthUser(User user) implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Stream.concat(user.getPermissions()
                 .stream()
-                .filter(Permission::isEnabled)
-                .map(Permission::getCode)
+                .map(Permission::getPermission)
                 .map(String::toUpperCase)
                 .map(SimpleGrantedAuthority::new), Stream.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())))
                 .collect(Collectors.toSet());

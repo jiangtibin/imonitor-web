@@ -1,6 +1,7 @@
 package com.hengtiansoft.imonitor.web.security.entity.token;
 
 import com.hengtiansoft.imonitor.web.security.audit.AuditEntity;
+import com.hengtiansoft.imonitor.web.security.entity.client.Client;
 import com.hengtiansoft.imonitor.web.security.entity.user.User;
 import com.hengtiansoft.imonitor.web.security.jwt.JwtToken;
 import jakarta.persistence.*;
@@ -30,17 +31,16 @@ public class Token extends AuditEntity implements JwtToken {
 
     private boolean expired;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "clietn_id")
+    private Client client;
 
     @Override
     public String getTokenString() {
         return this.token;
-    }
-
-    @Override
-    public Object getPrincipal() {
-        return this.user.getEmail();
     }
 }

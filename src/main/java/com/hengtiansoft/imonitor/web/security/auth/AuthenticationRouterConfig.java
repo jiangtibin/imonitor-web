@@ -19,7 +19,6 @@ public class AuthenticationRouterConfig {
         return route()
                 .before(HttpRequestLogHandler::preRequestLog)
                 .nest(path("/backend/v1/auth"), builder -> builder
-                        .POST("/registry", accept(APPLICATION_JSON), authRequestHandler::registry)
                         .POST("/authenticate", accept(APPLICATION_JSON), authRequestHandler::authenticate)
                         .POST("/refreshToken", authRequestHandler::refreshToken)
                 )

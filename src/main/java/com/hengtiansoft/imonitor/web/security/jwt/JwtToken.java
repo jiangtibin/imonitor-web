@@ -6,8 +6,6 @@ public interface JwtToken {
 
     String getTokenString();
 
-    Object getPrincipal();
-
     TokenType getTokenType();
 
     boolean isRevoked();

@@ -55,5 +55,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-/src/main/java/org/springframework/security/cas/

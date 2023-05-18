@@ -1,5 +1,6 @@
 package com.hengtiansoft.imonitor.web.security.jwt;
 
+import com.hengtiansoft.imonitor.web.security.entity.token.TokenType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -26,8 +27,12 @@ public class JwtProvider {
         this.tokenProperties = tokenProperties;
     }
 
-    public String extractUsername(String token) {
+    public String extractSubject(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public TokenType extractTokenType(String token) {
+        return TokenType.valueOf(extractClaim(token, claims -> claims.get("tokenType", String.class)));
     }
 
     public String generateAccessToken(UserDetails userDetails) {
@@ -38,6 +43,7 @@ public class JwtProvider {
             @Nonnull Map<String, Object> extraClaims,
             UserDetails userDetails
     ) {
+        extraClaims.put("tokenType", TokenType.ACCESS_TOKEN);
         return buildToken(extraClaims, userDetails, parseTimeOffset(tokenProperties.getAccessTokenExpiration()));
     }
 
@@ -48,7 +54,32 @@ public class JwtProvider {
     public String generateRefreshToken(
             @Nonnull Map<String, Object> extraClaims,
             UserDetails userDetails) {
+        extraClaims.put("tokenType", TokenType.REFRESH_TOKEN);
         return buildToken(extraClaims, userDetails, parseTimeOffset(tokenProperties.getRefreshTokenExpiration()));
+    }
+
+    public String generateApiToken(UserDetails userDetails) {
+        return generateApiToken(new HashMap<>(), userDetails);
+    }
+
+    public String generateApiToken(
+            @Nonnull Map<String, Object> extraClaims,
+            UserDetails userDetails) {
+        extraClaims.put("tokenType", TokenType.API_TOKEN);
+        return buildToken(extraClaims, userDetails);
+    }
+
+    private String buildToken(
+            @Nonnull Map<String, Object> extraClaims,
+            UserDetails userDetails
+    ) {
+        return Jwts
+                .builder()
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     private String buildToken(
@@ -67,7 +98,8 @@ public class JwtProvider {
     }
 
     public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        Date extractExpiration = extractExpiration(token);
+        return extractExpiration != null && extractExpiration.before(new Date());
     }
 
     private Date extractExpiration(String token) {

@@ -19,6 +19,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsChecker;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nonnull;
+
 public class JwtAuthenticationProvider implements AuthenticationProvider, InitializingBean, MessageSourceAware {
 
     private AuthenticationUserDetailsService<JwtTokenAuthenticationToken> authenticationUserDetailsService;
@@ -80,12 +82,14 @@ public class JwtAuthenticationProvider implements AuthenticationProvider, Initia
 
     private JwtAuthenticationToken authenticationNow(final Authentication authentication) throws AuthenticationException {
         try {
+            final JwtTokenAuthenticationToken jwtTokenAuthenticationToken = (JwtTokenAuthenticationToken) authentication;
             JwtToken token = this.jwtService
-                    .findByToken(authentication.getCredentials().toString())
+                    .findByToken(jwtTokenAuthenticationToken.getCredentials().toString())
                     .orElseThrow(() -> new JwtException("Token not found"));
 
-            if (token.getTokenType() != TokenType.ACCESS_TOKEN) {
-                throw new JwtException("Invalid token type");
+            if (jwtTokenAuthenticationToken.getTokenType() != TokenType.ACCESS_TOKEN
+                    && jwtTokenAuthenticationToken.getTokenType() != TokenType.API_TOKEN) {
+                throw new JwtException("unSupport token type");
             }
 
             if (jwtProvider.isTokenExpired(token.getTokenString())) {
@@ -96,7 +100,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider, Initia
                 throw new JwtException("Token revoked");
             }
 
-            UserDetails userDetails = this.loadUserByToken(token);
+            UserDetails userDetails = this.loadUserByToken(jwtTokenAuthenticationToken);
             this.userDetailsChecker.check(userDetails);
             return new JwtAuthenticationToken(userDetails, authentication.getCredentials(),
                     this.authoritiesMapper.mapAuthorities(userDetails.getAuthorities()), userDetails, this.key, token);
@@ -106,10 +110,8 @@ public class JwtAuthenticationProvider implements AuthenticationProvider, Initia
         }
     }
 
-    protected UserDetails loadUserByToken(JwtToken token) {
-        final JwtTokenAuthenticationToken authToken = new JwtTokenAuthenticationToken(token.getPrincipal().toString(),
-                token.getTokenString());
-        return this.authenticationUserDetailsService.loadUserDetails(authToken);
+    protected UserDetails loadUserByToken(JwtTokenAuthenticationToken jwtTokenAuthenticationToken) {
+        return this.authenticationUserDetailsService.loadUserDetails(jwtTokenAuthenticationToken);
     }
 
     public void setKey(String key) {
@@ -138,7 +140,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider, Initia
     }
 
     @Override
-    public void setMessageSource(final MessageSource messageSource) {
+    public void setMessageSource(@Nonnull final MessageSource messageSource) {
         this.messages = new MessageSourceAccessor(messageSource);
     }
 }

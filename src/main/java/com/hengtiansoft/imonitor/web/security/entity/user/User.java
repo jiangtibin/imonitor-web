@@ -8,8 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 import static com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY;
 
@@ -46,11 +45,11 @@ public class User extends AuditEntity {
     private LocalDateTime expiredDate;
 
     @Enumerated(EnumType.STRING)
-    private Role role;
+    private Role role = Role.WEB_USER;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "im_user_permissions",
-            joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "permission_id", referencedColumnName = "id"))
-    private List<Permission> permissions = new ArrayList<>();
+    @ElementCollection(targetClass = Permission.class, fetch = FetchType.EAGER)
+    @CollectionTable(name = "im_user_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "permission")
+    private Set<Permission> permissions;
 }
